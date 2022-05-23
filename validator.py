@@ -14,46 +14,62 @@
 
 import argparse
 import logging
+import ast
+from ast import *
+import os
 
-def subset(subset):
-    """
-    Validate the python subset
-    """
-    logging.info("Validating python subset")
-
-    # create an attribute for the subset called valid
-    
-    # Check if the python subset is valid
+def is_valid_subset(subset):
+    logging.info("Validating python subset: %s", subset)
     if subset.lower() not in ["p0", "p1", "p2", "p3"]:
         logging.error("Invalid python subset")
         return False
-    logging.info("Python subset: %s", subset)
+    return True
+
+def is_valid_input_file(input_file):
+    # Check if it is a python file
+    logging.info("Validating input file: %s", input_file)
+    if not input_file.endswith(".py"):
+        logging.warning("Invalid input file")
+
+    # check if input file exists
+    if not os.path.exists(input_file):
+        logging.error("Input file does not exist")
+        return False
+    return True
+
+def is_valid_p0(tree):
+    logging.info("Validating P0")
+    P0_nodes = [Module, Assign, Name,
+                Constant, Expr, Call,
+                UnaryOp, BinOp, USub,
+                Add, Store, Load]
+    nodes = NodeVisitor().visit(tree).nodes
+    for node in nodes:
+        if node not in P0_nodes:
+            logging.error("Invalid node: %s", node.__name__)
+            raise Exception("P0 verification failed. Invalid node: %s" % node.__name__)
+    
+    return True
+            
 
 def validate(subset, input_file):
-    """
-    Validate the python program
-    """
-    logging.info("Validating python program")
+    logging.info("Validating input python program")
+    tree = ast.parse(open(input_file).read())
+    if subset.lower() == "p0":
+        is_valid_p0(tree)
+    logging.info("Validation complete")
 
+class NodeVisitor(ast.NodeVisitor):
+    def __init__(self):
+        self.nodes = []
+
+    def generic_visit(self, node):
+        self.nodes.append(type(node))
+        ast.NodeVisitor.generic_visit(self, node)
+        return self
     
-    # Check if the python subset is valid
-    if subset.lower() not in ["p0", "p1", "p2", "p3"]:
-        logging.error("Invalid python subset")
-        return False
-    logging.info("Python subset: %s", subset)
-
-    # Check if the input file exists
-    try:
-    input_file = open(input_file, 'r')
-
-
-    logging.info("Input file: %s", input_file)
-
 
 def main():
-    """
-    Main function
-    """
     parser = argparse.ArgumentParser(description="Validate python subset")
     parser.add_argument(
         "--subset", help="python subset to validate", required=True)
@@ -61,13 +77,13 @@ def main():
         "input_file", help="input file to validate")
     args = parser.parse_args()
 
-
     # Setup logging format
     FORMAT = '[%(levelname)s] File: %(filename)s, Line: %(lineno)d, %(message)s'
     logging.basicConfig(
         format=FORMAT, level=logging.INFO)
 
-    validate(args.subset, args.input_file)
+    if is_valid_subset(args.subset) and is_valid_input_file(args.input_file):
+        validate(args.subset, args.input_file)
     
 
 # call main function
