@@ -16,7 +16,7 @@ import argparse
 import logging
 import ast
 from ast import *
-import os
+import os  
 
 def is_valid_subset(subset):
     logging.info("Validating python subset: %s", subset)
@@ -48,7 +48,6 @@ def is_valid_p0(tree):
         if node not in P0_nodes:
             logging.error("Invalid node: %s", node.__name__)
             raise Exception("P0 verification failed. Invalid node: %s" % node.__name__)
-    
     return True
             
 
