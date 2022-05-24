@@ -6,21 +6,24 @@ from ast import *
 import ast
 import logging
 
+
 class P0Lexer:
     tokens = ('INT',
-              'ID',
-              'ASSIGN', 
+              'NAME',
+              'EQUALS', 
               'LPAREN', 
               'RPAREN',  
               'MINUS', 
-              'PLUS')
-    
+              'PLUS',
+              'COMMA',
+              )
 
     t_PLUS = r'\+'
     t_MINUS = r'-'
-    t_ASSIGN = r'='
+    t_EQUALS = r'='
     t_LPAREN = r'\('
     t_RPAREN = r'\)'
+    t_COMMA = r','
     t_ignore = ' \t'
     t_ignore_comment = r'\#.*'
 
@@ -28,7 +31,7 @@ class P0Lexer:
         self.lexer = lex.lex(module=self)
         self.lexer.begin('INITIAL')
 
-    def t_ID(self, t):
+    def t_NAME(self, t):
         r'[a-zA-Z_][a-zA-Z_0-9]*'
         return t
 
@@ -46,19 +49,19 @@ class P0Lexer:
         exit(1)
 
 
-# Parser
-# mod = Module(stmt* body)
-#        | Expression(expr body)
-# stmt = Assign(expr* targets, expr value)
-#        | Expr(expr value)
-# expr = BinOp(expr left, operator op, expr right)
-#        | UnaryOp(operator op, expr operand)
-#        | Call(expr func, expr* args, keywords* keywords)
-#        | Constant(constant value)
-#        | Name(identifier id, expr_context ctx)
-# expr_context = Load | Store | Del
-# operator = Add
-# unaryop = USub
+# Grammar for P0:
+# statements := statement+
+# statement := compound_statement | simple_statement
+# simple_statement := assignment
+# assignment := NAME ['=' expression]
+# expression := sum
+# sum := sum '+' term | term
+# term := factor
+# factor := '+' factor | '-' factor | primary
+# primary: primary '(' [arguments] ') | atom
+# atom := INT | NAME
+# arguments := argument | argument ',' arguments
+# argument := expression
 class P0Parser:
     tokens = P0Lexer.tokens
 
@@ -71,121 +74,124 @@ class P0Parser:
         self.lexer = P0Lexer()
         self.parser = yacc.yacc(module=self)
 
-    def p_Module(self, p):
+    def p_statements(self, p):
         '''
-        Module : stmt_list
+        statements : statement
+                   | statement statements
         '''
-        p[0] = Module(body=p[1])
-        logging.info(ast.dump(p[0]))
-
-    def p_stmt_list(self, p):
-        '''
-        stmt_list : stmt
-                  | stmt stmt_list
-        '''
-        # set p[0] to Module.body
         if len(p) == 2:
             p[0] = [p[1]]
         else:
             p[0] = [p[1]] + p[2]
-        logging.info(ast.dump(p[0]) if not isinstance(p[0], list) else ast.dump(p[0][0]))
+        p[0] = Module(body=p[0])
+        logging.info(ast.dump(p[0]))
 
-    def p_stmt(self, p):
+    def p_statement(self, p):
         '''
-        stmt : Expr
-             | Assign
+        statement : simple_statement
         '''
         p[0] = p[1]
         logging.info(ast.dump(p[0]))
 
-    def p_Assign(self, p):
+    def p_simple_statement(self, p):
         '''
-        Assign : Name ASSIGN expr
+        simple_statement : assignment
         '''
-        if isinstance(p[1], Name):
-            p[1].ctx = ast.Store()
-        p[0] = Assign(targets=[p[1]], value=p[3])
-        logging.info(ast.dump(p[0]))
-
-    def p_Expr(self, p):
-        '''
-        Expr : expr
-        '''
-        p[0] = Expr(value=p[1])
-        logging.info(ast.dump(p[0]))
-
-    def p_expr(self, p):
-        '''
-        expr : BinOp
-             | UnaryOp
-             | Call
-             | Constant
-             | Name
-             | Empty
-        '''
-        if isinstance(p[1], Name):
-            p[1].ctx = ast.Load()
         p[0] = p[1]
-        logging.info(ast.dump(p[0]) if p[0] is not None else None)
-
-    def p_BinOp(self, p):
+        logging.info(ast.dump(p[0]))
+    
+    def p_assignment(self, p):
         '''
-        BinOp : Add
+        assignment : NAME EQUALS expression
+        '''
+        p[0] = Assign(targets=[Name(id=p[1], ctx=Store())], value=p[3])
+        logging.info(ast.dump(p[0]))
+
+    def p_expression(self, p):
+        '''
+        expression : sum
         '''
         p[0] = p[1]
         logging.info(ast.dump(p[0]))
 
-    def p_Add(self, p):
+    def p_sum(self, p):
         '''
-        Add : expr PLUS expr
+        sum : sum PLUS term
+            | term
         '''
-        p[0] = BinOp(left=p[1], op=Add(), right=p[3])
+        if len(p) == 2:
+            p[0] = p[1]
+        else:
+            p[0] = BinOp(left=p[1], op=Add(), right=p[3])
         logging.info(ast.dump(p[0]))
 
-
-    def p_UnaryOp(self, p):
+    def p_term(self, p):
         '''
-        UnaryOp : USub
+        term : factor
         '''
         p[0] = p[1]
         logging.info(ast.dump(p[0]))
 
-    def p_USub(self, p):
+    def p_factor(self, p):
         '''
-        USub : MINUS expr %prec UMINUS
+        factor : MINUS factor %prec UMINUS
+               | primary
         '''
-        p[0] = UnaryOp(op=USub(), operand=p[2])
+        if len(p) == 2:
+            p[0] = p[1]
+        else:
+            if p[1] == '+':
+                p[0] = UnaryOp(op=UAdd(), operand=p[2])
+            else:
+                p[0] = UnaryOp(op=USub(), operand=p[2])
         logging.info(ast.dump(p[0]))
 
-    def p_Call(self, p):
+    def p_primary(self, p):
         '''
-        Call : Name LPAREN expr RPAREN
+        primary : primary LPAREN arguments RPAREN
+                | atom
         '''
-        if isinstance(p[1], Name):
-            p[1].ctx = ast.Load()
-        p[0] = Call(func=p[1], args=[p[3]] if p[3] is not None else [])
+        if len(p) == 2:
+            p[0] = p[1]
+        else:
+            p[0] = Call(func=p[1], args=p[3])
         logging.info(ast.dump(p[0]))
 
-    def p_Constant(self, p):
+    def p_arguments(self, p):
         '''
-        Constant : INT
+        arguments : argument
+                  | argument COMMA arguments
         '''
-        p[0] = Constant(value=p[1])
+        if len(p) == 2:
+            p[0] = [p[1]]
+        else:
+            p[0] = [p[1]] + p[3]
         logging.info(ast.dump(p[0]))
 
-    def p_Name(self, p):
+    def p_argument(self, p):
         '''
-        Name : ID
+        argument : expression
         '''
-        p[0] = Name(id=p[1])
+        p[0] = p[1]
         logging.info(ast.dump(p[0]))
 
-    def p_Empty(self, p):
-        'Empty :'
-        pass
+    def p_atom(self, p):
+        '''
+        atom : INT
+             | NAME
+        '''
+        if isinstance(p[1], int):
+            p[0] = Constant(value=p[1])
+        else:
+            p[0] = Name(id=p[1], ctx=Load())
+        logging.info(ast.dump(p[0]))
+
 
     def p_error(self, p):
-        logging.error("Syntax error at '%s'" % p.value)
+        if p:
+            logging.error("Syntax error at '%s'" % p.value)
+        else:
+            logging.error("Syntax error at EOF")
         exit(1)
 
 
@@ -195,7 +201,7 @@ logging.basicConfig(
     format=FORMAT, level=logging.INFO)
 parser = P0Parser().parser
 x = '''
--x - 2
+x
 '''
 parser.parse(x)
 logging.info(ast.dump(ast.parse(x)))
