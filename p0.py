@@ -43,6 +43,7 @@ class P0Lexer:
     def t_NEWLINE(self, t):
         r'( \r?\n[ \t]* )+'
         t.lexer.lineno += len(t.value)
+        # return t
 
     def t_error(self, t):
         logging.error("Illegal character '%s'" % t.value[0])
@@ -52,15 +53,20 @@ class P0Lexer:
 # Grammar for P0:
 # module := statement*
 # statements := statement+
-# statement := simple_statement
+# statement := simple_statements
+# simple_statements := simple_statement 
+#       | simple_statements NEWLINE simple_statement
 # simple_statement := assignment | d_expression
 # assignment := NAME '=' expression
 # d_expression := expression
-# expression := sum
-# sum := sum '+' term | term
-# term := factor
-# factor := '+' factor | '-' factor | primary
-# primary: primary '(' [arguments] ') | atom
+# expression := binary_expression
+#             | unary_expression
+#             | call_expression
+#             | LPAREN expression RPAREN
+#             | atom
+# binary_expression := expression PLUS expression
+# unary_expression := MINUS expression
+# call_expression := NAME LPAREN expression_list RPAREN
 # atom := INT | NAME
 # arguments := args | empty
 # args := arg | args ',' arg
@@ -68,6 +74,7 @@ class P0Lexer:
 class P0Parser:
     tokens = P0Lexer.tokens
 
+    # parenthesis has the highest precedence
     precedence = (
         ('left', 'PLUS', 'MINUS'),
         ('right', 'UMINUS'),
@@ -88,18 +95,29 @@ class P0Parser:
     def p_statements(self, p):
         '''
         statements : statement statements
+                    | statement
                     | empty
         '''
         if len(p) == 2:
-            p[0] = []
+            p[0] = [p[1]] if p[1] is not None else []
         else:
             p[0] = [p[1]] + p[2]
 
     def p_statement(self, p):
         '''
-        statement : simple_statement
+        statement : simple_statements
         '''
         p[0] = p[1]
+
+    def p_simple_statements(self, p):
+        '''
+        simple_statements : simple_statement
+                            | simple_statements NEWLINE simple_statement
+        '''
+        if len(p) == 2:
+            p[0] = [p[1]]
+        else:
+            p[0] = p[1] + [p[3]]
 
     def p_simple_statement(self, p):
         '''
@@ -116,54 +134,41 @@ class P0Parser:
 
     def p_d_expression(self, p):
         '''
-        d_expression : expression
+        d_expression : expression 
         '''
         p[0] = Expr(value=p[1])
 
     def p_expression(self, p):
         '''
-        expression : sum
-        '''
-        p[0] = p[1]
-
-    def p_sum(self, p):
-        '''
-        sum : sum PLUS term
-            | term
+        expression : binary_expression
+                    | unary_expression
+                    | call_expression
+                    | LPAREN expression RPAREN
+                    | atom
         '''
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = BinOp(left=p[1], op=Add(), right=p[3])
+            p[0] = p[2]
 
-    def p_term(self, p):
+    def p_binary_expression(self, p):
         '''
-        term : factor
+        binary_expression : expression PLUS expression
         '''
-        p[0] = p[1]
+        p[0] = BinOp(left=p[1], op=Add(), right=p[3])
 
-    def p_factor(self, p):
+    def p_unary_expression(self, p):
         '''
-        factor : MINUS factor %prec UMINUS
-               | primary
+        unary_expression : MINUS expression %prec UMINUS
         '''
-        if len(p) == 2:
-            p[0] = p[1]
-        else:
-            if p[1] == '+':
-                p[0] = UnaryOp(op=UAdd(), operand=p[2])
-            else:
-                p[0] = UnaryOp(op=USub(), operand=p[2])
+        p[0] = UnaryOp(op=USub(), operand=p[2])
 
-    def p_primary(self, p):
+    def p_call_expression(self, p):
         '''
-        primary : primary LPAREN arguments RPAREN
-                | atom
+        call_expression : NAME LPAREN arguments RPAREN
         '''
-        if len(p) == 2:
-            p[0] = p[1]
-        else:
-            p[0] = Call(func=p[1], args=p[3])
+        p[0] = Call(func=p[1], args=p[3])
+
 
     def p_arguments(self, p):
         '''
@@ -209,15 +214,55 @@ class P0Parser:
 
 
     def p_error(self, p):
+        stack_state_str = ' '.join([symbol.type for symbol in self.parser.symstack][1:])
+        err_tok = 'EOF'
         if p:
-            logging.error("\033[1;31m Syntax error at '%s' \033[0m" % p.value)
-        else:
-            logging.error("\033[1;31m Syntax error at EOF \033[0m")
+            err_tok = p
+        logging.error('\033[1;31m Syntax error at "{}".\033[0m \n \033[1;31mParser State:{} {} . {}\033[0m'
+                  .format(err_tok,
+                          self.parser.state,
+                          stack_state_str,
+                          p))
         exit(1)
 
 
-def validate(data):
+def ply_validate(data):
     return P0Parser().parser.parse(data)
+
+def past_validate(tree):
+    logging.info("\033[1;33m Validating P0 using AST Module \033[0m")
+    P0_nodes = [Module, Assign, Name,
+                Constant, Expr, Call,
+                UnaryOp, BinOp, USub,
+                Add, Store, Load]
+    nodes = NodeVisitor().visit(tree).nodes
+    for node in nodes:
+        if node not in P0_nodes:
+            # make the text red
+            logging.error("\033[1;31m Invalid node: %s \033[0m", node)
+            raise Exception("\033[1;31mP0 verification failed. Invalid node: %s \033[0m" % node.__name__)
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.UnaryOp):
+            if not isinstance(node.op, ast.USub):
+                raise Exception("\033[1;31mP0 verification failed. Invalid UnaryOp: %s \033[0m" % node.op)
+        if isinstance(node, ast.BinOp):
+            if not isinstance(node.op, ast.Add):
+                raise Exception("\033[1;31mP0 verification failed. Invalid BinOp: %s \033[0m" % node.op)
+        if isinstance(node, ast.Call):
+            if not node.func.id in ['print', 'input']:
+                raise Exception("\033[1;31mP0 verification failed. Invalid Call: %s \033[0m" % node.func.id)
+                
+    return True 
+
+class NodeVisitor(ast.NodeVisitor):
+    def __init__(self):
+        self.nodes = []
+
+    def generic_visit(self, node):
+        self.nodes.append(type(node))
+        ast.NodeVisitor.generic_visit(self, node)
+        return self       
 
 # FORMAT = '[%(levelname)s] File: %(filename)s, Line: %(lineno)d, %(message)s'
 # logging.basicConfig(

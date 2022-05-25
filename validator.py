@@ -26,54 +26,23 @@ def is_valid_subset(subset):
         return False
     return True
 
-def is_valid_input_file(input_file):
-    # Check if it is a python file
-    logging.info("Validating input file: %s", input_file)
-    if not input_file.endswith(".py"):
-        logging.warning("Invalid input file")
 
-    # check if input file exists
-    if not os.path.exists(input_file):
-        logging.error("Input file does not exist")
-        return False
-    return True
 
-def is_valid_p0(tree):
-    logging.info("\033[1;33m Validating P0 using AST Module \033[0m")
-    P0_nodes = [Module, Assign, Name,
-                Constant, Expr, Call,
-                UnaryOp, BinOp, USub,
-                Add, Store, Load]
-    nodes = NodeVisitor().visit(tree).nodes
-    for node in nodes:
-        if node not in P0_nodes:
-            # make the text red
-            logging.error("\033[1;31m Invalid node: %s \033[0m", node)
-            raise Exception("\033[1;31mP0 verification failed. Invalid node: %s \033[0m" % node.__name__)
-    return True         
+ 
 
 
 def validate(subset, input_file):
-    logging.info("Validating input python program")
+    # make the file name blue
+    logging.info("Validating \033[1;34m %s \033[0m", input_file)
     with open(input_file, "r") as f:
         program = f.read()
         if subset.lower() == "p0":
-            p0.validate(program)
+            p0.ply_validate(program)
 
         tree = ast.parse(program)
         if subset.lower() == "p0":
-            is_valid_p0(tree)
+            p0.past_validate(tree)
     logging.info("Validation complete")
-
-
-class NodeVisitor(ast.NodeVisitor):
-    def __init__(self):
-        self.nodes = []
-
-    def generic_visit(self, node):
-        self.nodes.append(type(node))
-        ast.NodeVisitor.generic_visit(self, node)
-        return self
     
 
 def main():
@@ -81,7 +50,7 @@ def main():
     parser.add_argument(
         "--subset", help="python subset to validate", required=True)
     parser.add_argument(
-        "input_file", help="input file to validate")
+        "--input", help="input file(s) to validate")
     args = parser.parse_args()
 
     # Setup logging format
@@ -89,8 +58,13 @@ def main():
     logging.basicConfig(
         format=FORMAT, level=logging.INFO)
 
-    if is_valid_subset(args.subset) and is_valid_input_file(args.input_file):
-        validate(args.subset, args.input_file)
+    if is_valid_subset(args.subset):
+        if os.path.isdir(args.input):
+            # run validation on all files in the directory
+            for file in os.listdir(args.input):
+                validate(args.subset, os.path.join(args.input, file))
+        else:
+            validate(args.subset, args.input)
     
 
 # call main function
