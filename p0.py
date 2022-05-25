@@ -16,7 +16,7 @@ class P0Lexer:
               'MINUS', 
               'PLUS',
               'COMMA',
-              )
+              'NEWLINE')
 
     t_PLUS = r'\+'
     t_MINUS = r'-'
@@ -40,8 +40,8 @@ class P0Lexer:
         t.value = int(t.value)
         return t
 
-    def t_newline(self, t):
-        r'\n+'
+    def t_NEWLINE(self, t):
+        r'( \r?\n[ \t]* )+'
         t.lexer.lineno += len(t.value)
 
     def t_error(self, t):
@@ -50,18 +50,21 @@ class P0Lexer:
 
 
 # Grammar for P0:
+# module := statement*
 # statements := statement+
-# statement := compound_statement | simple_statement
-# simple_statement := assignment
-# assignment := NAME ['=' expression]
+# statement := simple_statement
+# simple_statement := assignment | d_expression
+# assignment := NAME '=' expression
+# d_expression := expression
 # expression := sum
 # sum := sum '+' term | term
 # term := factor
 # factor := '+' factor | '-' factor | primary
 # primary: primary '(' [arguments] ') | atom
 # atom := INT | NAME
-# arguments := argument | argument ',' arguments
-# argument := expression
+# arguments := args | empty
+# args := arg | args ',' arg
+# arg := expression
 class P0Parser:
     tokens = P0Lexer.tokens
 
@@ -72,47 +75,56 @@ class P0Parser:
 
     def __init__(self):
         self.lexer = P0Lexer()
-        self.parser = yacc.yacc(module=self)
+        self.parser = yacc.yacc(module=self, start='module', debug=1)
+        logging.info('\033[1;33m Validating P0 using PLY \033[0m')
+
+    def p_module(self, p):
+        '''
+        module : statements
+        '''
+        p[0] = Module(body=p[1])
+        logging.info(ast.dump(p[0]))
 
     def p_statements(self, p):
         '''
-        statements : statement
-                   | statement statements
+        statements : statement statements
+                    | empty
         '''
         if len(p) == 2:
-            p[0] = [p[1]]
+            p[0] = []
         else:
             p[0] = [p[1]] + p[2]
-        p[0] = Module(body=p[0])
-        logging.info(ast.dump(p[0]))
 
     def p_statement(self, p):
         '''
         statement : simple_statement
         '''
         p[0] = p[1]
-        logging.info(ast.dump(p[0]))
 
     def p_simple_statement(self, p):
         '''
         simple_statement : assignment
+                        | d_expression
         '''
         p[0] = p[1]
-        logging.info(ast.dump(p[0]))
     
     def p_assignment(self, p):
         '''
         assignment : NAME EQUALS expression
         '''
         p[0] = Assign(targets=[Name(id=p[1], ctx=Store())], value=p[3])
-        logging.info(ast.dump(p[0]))
+
+    def p_d_expression(self, p):
+        '''
+        d_expression : expression
+        '''
+        p[0] = Expr(value=p[1])
 
     def p_expression(self, p):
         '''
         expression : sum
         '''
         p[0] = p[1]
-        logging.info(ast.dump(p[0]))
 
     def p_sum(self, p):
         '''
@@ -123,14 +135,12 @@ class P0Parser:
             p[0] = p[1]
         else:
             p[0] = BinOp(left=p[1], op=Add(), right=p[3])
-        logging.info(ast.dump(p[0]))
 
     def p_term(self, p):
         '''
         term : factor
         '''
         p[0] = p[1]
-        logging.info(ast.dump(p[0]))
 
     def p_factor(self, p):
         '''
@@ -144,7 +154,6 @@ class P0Parser:
                 p[0] = UnaryOp(op=UAdd(), operand=p[2])
             else:
                 p[0] = UnaryOp(op=USub(), operand=p[2])
-        logging.info(ast.dump(p[0]))
 
     def p_primary(self, p):
         '''
@@ -155,25 +164,32 @@ class P0Parser:
             p[0] = p[1]
         else:
             p[0] = Call(func=p[1], args=p[3])
-        logging.info(ast.dump(p[0]))
 
     def p_arguments(self, p):
         '''
-        arguments : argument
-                  | argument COMMA arguments
+        arguments : args
+                    | empty
+        '''
+        if len(p) == 2:
+            p[0] = p[1] if p[1] is not None else []
+        else:
+            p[0] = []
+    
+    def p_args(self, p):
+        '''
+        args : arg
+             | args COMMA arg
         '''
         if len(p) == 2:
             p[0] = [p[1]]
         else:
-            p[0] = [p[1]] + p[3]
-        logging.info(ast.dump(p[0]))
+            p[0] = p[1] + [p[3]]
 
-    def p_argument(self, p):
+    def p_arg(self, p):
         '''
-        argument : expression
+        arg : expression
         '''
         p[0] = p[1]
-        logging.info(ast.dump(p[0]))
 
     def p_atom(self, p):
         '''
@@ -184,24 +200,31 @@ class P0Parser:
             p[0] = Constant(value=p[1])
         else:
             p[0] = Name(id=p[1], ctx=Load())
-        logging.info(ast.dump(p[0]))
+
+    def p_empty(self, p):
+        '''
+        empty :
+        '''
+        pass
 
 
     def p_error(self, p):
         if p:
-            logging.error("Syntax error at '%s'" % p.value)
+            logging.error("\033[1;31m Syntax error at '%s' \033[0m" % p.value)
         else:
-            logging.error("Syntax error at EOF")
+            logging.error("\033[1;31m Syntax error at EOF \033[0m")
         exit(1)
 
 
-# Setup logging format
-FORMAT = '[%(levelname)s] File: %(filename)s, Line: %(lineno)d, %(message)s'
-logging.basicConfig(
-    format=FORMAT, level=logging.INFO)
-parser = P0Parser().parser
-x = '''
-x
-'''
-parser.parse(x)
-logging.info(ast.dump(ast.parse(x)))
+def validate(data):
+    return P0Parser().parser.parse(data)
+
+# FORMAT = '[%(levelname)s] File: %(filename)s, Line: %(lineno)d, %(message)s'
+# logging.basicConfig(
+#     format=FORMAT, level=logging.INFO)
+
+# x = '''
+# 1 + x
+# '''
+# P0Parser().parser.parse(x)
+# logging.info(ast.dump(ast.parse(x)))

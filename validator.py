@@ -16,7 +16,8 @@ import argparse
 import logging
 import ast
 from ast import *
-import os  
+import os
+import p0
 
 def is_valid_subset(subset):
     logging.info("Validating python subset: %s", subset)
@@ -38,7 +39,7 @@ def is_valid_input_file(input_file):
     return True
 
 def is_valid_p0(tree):
-    logging.info("Validating P0")
+    logging.info("\033[1;33m Validating P0 using AST Module \033[0m")
     P0_nodes = [Module, Assign, Name,
                 Constant, Expr, Call,
                 UnaryOp, BinOp, USub,
@@ -46,17 +47,24 @@ def is_valid_p0(tree):
     nodes = NodeVisitor().visit(tree).nodes
     for node in nodes:
         if node not in P0_nodes:
-            logging.error("Invalid node: %s", node.__name__)
-            raise Exception("P0 verification failed. Invalid node: %s" % node.__name__)
-    return True
-            
+            # make the text red
+            logging.error("\033[1;31m Invalid node: %s \033[0m", node)
+            raise Exception("\033[1;31mP0 verification failed. Invalid node: %s \033[0m" % node.__name__)
+    return True         
+
 
 def validate(subset, input_file):
     logging.info("Validating input python program")
-    tree = ast.parse(open(input_file).read())
-    if subset.lower() == "p0":
-        is_valid_p0(tree)
+    with open(input_file, "r") as f:
+        program = f.read()
+        if subset.lower() == "p0":
+            p0.validate(program)
+
+        tree = ast.parse(program)
+        if subset.lower() == "p0":
+            is_valid_p0(tree)
     logging.info("Validation complete")
+
 
 class NodeVisitor(ast.NodeVisitor):
     def __init__(self):
