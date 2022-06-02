@@ -18,6 +18,7 @@ from ast import *
 import subprocess
 import argparse
 import os
+import re
 
 subset_tbl = ['p0', 'p1', 'p2', 'p3']
 python_exe = 'python3'
@@ -100,17 +101,39 @@ def parse_nodes(subset, f):
 
 def exec_prog(file):
     """copy the prog to a tmp file and modify 
-    the prog to convert stdin bytestream to 
-    an integer. check if the modified program 
-    runs without error.
+    the prog to replace stdin in the orig prog. 
+    check if the modified program runs without 
+    any error.
     """
     tmp_file = 'tmp.py'
+    infilename = os.path.splitext(file)[0] + '.in'
     def create_tmp(file):
         with open(file, 'r') as f:
             prog = f.read()
-            prog = prog.replace('input()', 'int(input())')
-            with open(tmp_file, 'w') as f:
-                f.write(prog)
+
+        def stdin_to_ib(prog, infilename):
+            re_input = re.compile(r'input\s*\(\s*\)')
+            num_input = len(re_input.findall(prog))
+
+            inputs = []
+            if os.path.isfile(infilename):
+                with open(infilename, 'r') as infile:
+                        inputs = [line.rstrip() for line in infile.read().splitlines()]
+
+            if len(inputs) < num_input:
+                raise Exception("Not enough user inputs in the input" \
+                    " file: {}".format(infilename))
+            else:
+                prog = re_input.sub(lambda x: inputs.pop(0), prog)
+                # debug modified prog
+                # print("file: {}".format(file))
+                # print(prog)
+            
+            return prog
+
+        prog = stdin_to_ib(prog, infilename)    
+        with open(tmp_file, 'w') as f:
+            f.write(prog)
         return tmp_file
     
     def clean_tmp():
@@ -118,14 +141,15 @@ def exec_prog(file):
             os.remove(tmp_file)
 
     cmd = [python_exe, create_tmp(file)]
-    infilename = os.path.splitext(file)[0] + '.in'
     if os.path.isfile(infilename):
         with open(infilename, 'r') as infile:
             popen = subprocess.Popen(cmd, 
                         stdin=infile, 
                         stdout=subprocess.PIPE)
     else:
-        popen = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        popen = subprocess.Popen(cmd, 
+            stdin=subprocess.PIPE, 
+            stdout=subprocess.PIPE)
     result = popen_result(popen)
     clean_tmp()
     return result
