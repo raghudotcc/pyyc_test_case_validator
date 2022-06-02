@@ -16,7 +16,6 @@ Example: python3 val.py --subset=P0 --input=test.py
 import ast
 from ast import *
 import subprocess
-import logging
 import argparse
 import os
 
@@ -51,13 +50,12 @@ def popen_result(popen):
 def validate(subset_func):
     """Decorator to get valid nodes from subset func, 
     walk the AST and verify if input prog has valid AST nodes."""
-    logging.info("Validating %s", subset_func.__name__)
     def wrapper(prog):
         tree = ast.parse(prog)
         valid_nodes = subset_func(prog)
         for node in ast.walk(tree):
             if type(node) not in valid_nodes:
-                logging.error("Invalid node type: %s", type(node))
+                print("Invalid node type: {}".format(type(node)))
                 return False
         return True
     return wrapper
@@ -90,7 +88,7 @@ dispatch_tbl = { subset : eval(subset) for subset in subset_tbl }
 
 def is_valid_subset(subset):
     if subset.lower() not in subset_tbl:
-        logging.error("Invalid python subset." \
+        print("Invalid python subset." \
             " Supported subsets: {}".format(subset_tbl))
         return False
     return True
@@ -103,8 +101,8 @@ def parse_nodes(subset, f):
 def exec_prog(file):
     """copy the prog to a tmp file and modify 
     the prog to convert stdin bytestream to 
-    an integer. check if the program runs 
-    without error.
+    an integer. check if the modified program 
+    runs without error.
     """
     tmp_file = 'tmp.py'
     def create_tmp(file):
@@ -140,15 +138,8 @@ def parse_args():
         "--input", help="input file(s) to validate")
     return parser.parse_args()
 
-def setup_logging():    
-    FORMAT = '[%(levelname)s] File: %(filename)s, Line: %(lineno)d, %(message)s'
-    logging.basicConfig(
-        format=FORMAT, level=logging.INFO)
-
 def main():
     args = parse_args()
-
-    setup_logging()
 
     prog_files = []
     if is_valid_subset(args.subset):
@@ -163,7 +154,7 @@ def main():
             with open(file, 'r') as f:
                 assert parse_nodes(args.subset, f) \
                         and exec_prog(file) == True, \
-                        "Invalid program: %s" % file
+                        "invalid program: {}".format(file)
 
 if __name__ == "__main__":
     main()
