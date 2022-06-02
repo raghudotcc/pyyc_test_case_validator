@@ -26,22 +26,13 @@ def is_valid_subset(subset):
         return False
     return True
 
-
-
- 
-
-
 def validate(subset, input_file):
     # make the file name blue
     logging.info("Validating \033[1;34m %s \033[0m", input_file)
     with open(input_file, "r") as f:
         program = f.read()
         if subset.lower() == "p0":
-            p0.ply_validate(program)
-
-        tree = ast.parse(program)
-        if subset.lower() == "p0":
-            p0.past_validate(tree)
+            p0.validate(program)
     logging.info("Validation complete")
     
 
