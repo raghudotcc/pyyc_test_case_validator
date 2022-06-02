@@ -1,16 +1,17 @@
-##############################################################################
-# File: validator.py
-# Description: This file validates the input python programs
-#              as defined in the book "Python-to-x86" by
-#              Jeremy Siek. User can also specify the subset of
-#              python(P0, P1, P2, P3) to be validated. Both subset
-#              and input program are required parameters to run the
-#              validator.
-# Date: 23/05/2022
-# Version: 0.11
-# Usage: python3 val.py --subset=<python-subset> --input_file=<input_file>
-#        Example: python3 validator.py --subset=P0 --input=test.py
-##############################################################################
+"""Given an input file and a subset of python(as mentioned in 
+the book 'python-to-x86'), verify that the program is valid.
+
+Validation is two part:
+1) Parse the program and check if the program has 
+the correct AST nodes.
+2) Execute the program and check if the program runs
+without error.
+
+Usage: python3 val.py --subset=<python-subset> \
+                      --input_file=<file|dir>
+
+Example: python3 val.py --subset=P0 --input=test.py
+"""
 
 import ast
 from ast import *
@@ -18,7 +19,6 @@ import subprocess
 import logging
 import argparse
 import os
-import sys
 
 subset_tbl = ['p0', 'p1', 'p2', 'p3']
 python_exe = 'python3'
@@ -37,7 +37,6 @@ nodes = [
 ]
 
 def popen_result(popen):
-    # type: (Popen) -> Result
     (out, err) = popen.communicate()
     retcode = popen.wait()
     if retcode != 0:
@@ -50,6 +49,8 @@ def popen_result(popen):
         return True
 
 def validate(subset_func):
+    """Decorator to get valid nodes from subset func, 
+    walk the AST and verify if input prog has valid AST nodes."""
     logging.info("Validating %s", subset_func.__name__)
     def wrapper(prog):
         tree = ast.parse(prog)
@@ -83,19 +84,28 @@ def p3(prog):
             + nodes[2] \
             + nodes[3]
 
+# create a dict containing the subset as key
+# and the function with the same name as the value
 dispatch_tbl = { subset : eval(subset) for subset in subset_tbl }
 
 def is_valid_subset(subset):
     if subset.lower() not in subset_tbl:
-        logging.error("Invalid python subset")
+        logging.error("Invalid python subset." \
+            " Supported subsets: {}".format(subset_tbl))
         return False
     return True
 
 def parse_nodes(subset, f):
+    """validate the AST nodes using the validate decorator"""
     prog = f.read()
     return dispatch_tbl[subset.lower()](prog)
 
 def exec_prog(file):
+    """copy the prog to a tmp file and modify 
+    the prog to convert stdin bytestream to 
+    an integer. check if the program runs 
+    without error.
+    """
     tmp_file = 'tmp.py'
     def create_tmp(file):
         with open(file, 'r') as f:
@@ -130,13 +140,15 @@ def parse_args():
         "--input", help="input file(s) to validate")
     return parser.parse_args()
 
-def main():
-    args = parse_args()
-
-    # Setup logging format
+def setup_logging():    
     FORMAT = '[%(levelname)s] File: %(filename)s, Line: %(lineno)d, %(message)s'
     logging.basicConfig(
         format=FORMAT, level=logging.INFO)
+
+def main():
+    args = parse_args()
+
+    setup_logging()
 
     prog_files = []
     if is_valid_subset(args.subset):
@@ -146,13 +158,12 @@ def main():
                 prog_files.append(os.path.join(args.input, file))
         else:
             prog_files.append(args.input)
+
         for file in prog_files:
             with open(file, 'r') as f:
                 assert parse_nodes(args.subset, f) \
                         and exec_prog(file) == True, \
                         "Invalid program: %s" % file
-                
-
 
 if __name__ == "__main__":
     main()
