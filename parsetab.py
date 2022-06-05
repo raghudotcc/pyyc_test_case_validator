@@ -6,9 +6,9 @@ _tabversion = '3.10'
 
 _lr_method = 'LALR'
 
-_lr_signature = 'file_input_endleftEQGTLTleftPLUSMINUSleftMULTDIVASSIGN COLON COMMA DEDENT DEF DIV ENDMARKER EQ GT IF INDENT LPAR LT MINUS MULT NAME NEWLINE NUMBER PLUS RETURN RPAR SEMICOLON STRING WSfile_input_end : file_input ENDMARKERfile_input : file_input NEWLINE\n                  | file_input stmt\n                  | NEWLINE\n                  | stmtfuncdef : DEF NAME parameters COLON suiteparameters : LPAR RPAR\n                  | LPAR varargslist RPARvarargslist : varargslist COMMA NAME\n                   | NAMEstmt : simple_stmtstmt : compound_stmtsimple_stmt : small_stmts NEWLINE\n                   | small_stmts SEMICOLON NEWLINEsmall_stmts : small_stmts SEMICOLON small_stmt\n                   | small_stmtsmall_stmt : flow_stmt\n                  | expr_stmtexpr_stmt : testlist ASSIGN testlist\n                 | testlist flow_stmt : return_stmtreturn_stmt : RETURN testlistcompound_stmt : if_stmt\n                     | funcdefif_stmt : IF test COLON suitesuite : simple_stmt\n             | NEWLINE INDENT stmts DEDENTstmts : stmts stmt\n             | stmtcomparison : comparison PLUS comparison\n                  | comparison MINUS comparison\n                  | comparison MULT comparison\n                  | comparison DIV comparison\n                  | comparison LT comparison\n                  | comparison EQ comparison\n                  | comparison GT comparison\n                  | PLUS comparison\n                  | MINUS comparison\n                  | powerpower : atom\n             | atom traileratom : NAMEatom : NUMBER\n            | STRINGatom : LPAR testlist RPARtrailer : LPAR arglist RPARtestlist : testlist_multi COMMA\n                | testlist_multi testlist_multi : testlist_multi COMMA test\n                      | testtest : comparisonarglist : arglist COMMA argument\n               | argumentargument : test'
+_lr_signature = 'leftORleftANDleftNOTrightEQUALSleftPLUSMINUSrightUMINUSAND ASSIGN CLASS COLON COMMA DEDENT DEF ELSE ENDMARKER EQ EQUALS FALSE IF INDENT IS LAMBDA LBRACE LBRACKET LPAREN MINUS NEWLINE NOT NOT_EQ OR PLUS RBRACE RBRACKET RETURN RPAREN SEMICOLON TRUE WHILE WHITESPACE identifier integer\n        module : statements\n        \n        statements : statement statements\n                   | statement\n        \n        statement : stmt_list NEWLINE\n        \n        stmt_list : simple_stmt\n        \n        simple_stmt : expression_stmt\n                    | assignment_stmt\n        \n        expression_stmt : expression\n        \n        assignment_stmt : target_list ASSIGN expression\n        \n        target_list : target\n        \n        target : identifier\n               | LPAREN target_list RPAREN\n        \n        atom : identifier\n             | literal\n             | enclosure\n        \n        literal : integer\n                | TRUE\n                | FALSE\n        \n        enclosure : parenth_form\n        \n        parenth_form : LPAREN expression RPAREN\n        \n        primary : atom\n                | call\n        \n        call : primary LPAREN argument_list RPAREN\n        \n        argument_list : positional_arguments\n        \n        positional_arguments : positional_arguments COMMA positional_item\n                             | positional_item\n                             | empty\n        \n        positional_item : expression\n        \n        expression : conditional_expression\n        \n        conditional_expression : or_test\n        \n        or_test : a_expr\n        \n        a_expr : a_expr PLUS u_expr\n               | u_expr\n        \n        u_expr : primary\n               | MINUS primary %prec UMINUS\n        \n        empty :\n        '
     
-_lr_action_items = {'DEDENT':([14,17,22,26,49,68,74,75,80,84,85,86,87,],[-12,-11,-24,-23,-13,-14,-26,-25,-6,86,-29,-27,-28,]),'LPAR':([0,1,3,5,6,10,11,13,14,15,17,19,21,22,24,26,27,32,35,36,37,39,40,41,42,43,44,45,47,48,49,50,51,54,68,72,74,75,76,80,81,84,85,86,87,],[1,1,-43,1,1,-4,1,1,-12,-44,-11,-5,37,-24,-42,-23,1,52,1,1,1,1,1,1,1,1,1,1,-2,-3,-13,1,-45,1,-14,1,-26,-25,1,-6,1,1,-29,-27,-28,]),'RETURN':([0,10,14,17,19,22,26,27,47,48,49,50,54,68,72,74,75,80,81,84,85,86,87,],[5,-4,-12,-11,-5,-24,-23,5,-2,-3,-13,5,5,-14,5,-26,-25,-6,5,5,-29,-27,-28,]),'NUMBER':([0,1,5,6,10,11,13,14,17,19,22,26,27,35,36,37,39,40,41,42,43,44,45,47,48,49,50,54,68,72,74,75,76,80,81,84,85,86,87,],[3,3,3,3,-4,3,3,-12,-11,-5,-24,-23,3,3,3,3,3,3,3,3,3,3,3,-2,-3,-13,3,3,-14,3,-26,-25,3,-6,3,3,-29,-27,-28,]),'RPAR':([3,12,15,16,20,21,24,25,29,31,33,36,38,51,52,56,57,58,59,60,61,62,63,64,65,66,69,70,77,82,83,],[-43,-50,-44,-39,-48,-40,-42,-51,51,-38,-37,-47,-41,-45,71,-49,-53,-54,77,-36,-34,-30,-33,-35,-31,-32,79,-10,-46,-52,-9,]),'COLON':([3,15,16,21,24,25,31,33,34,38,51,53,60,61,62,63,64,65,66,71,77,79,],[-43,-44,-39,-40,-42,-51,-38,-37,54,-41,-45,72,-36,-34,-30,-33,-35,-31,-32,-7,-46,-8,]),'ENDMARKER':([10,14,17,19,22,26,27,47,48,49,68,74,75,80,86,],[-4,-12,-11,-5,-24,-23,46,-2,-3,-13,-14,-26,-25,-6,-27,]),'DIV':([3,15,16,21,24,25,31,33,38,51,60,61,62,63,64,65,66,77,],[-43,-44,-39,-40,-42,42,42,42,-41,-45,42,42,42,-33,42,42,-32,-46,]),'MINUS':([0,1,3,5,6,10,11,13,14,15,16,17,19,21,22,24,25,26,27,31,33,35,36,37,38,39,40,41,42,43,44,45,47,48,49,50,51,54,60,61,62,63,64,65,66,68,72,74,75,76,77,80,81,84,85,86,87,],[6,6,-43,6,6,-4,6,6,-12,-44,-39,-11,-5,-40,-24,-42,44,-23,6,-38,-37,6,6,6,-41,6,6,6,6,6,6,6,-2,-3,-13,6,-45,6,44,44,-30,-33,44,-31,-32,-14,6,-26,-25,6,-46,-6,6,6,-29,-27,-28,]),'MULT':([3,15,16,21,24,25,31,33,38,51,60,61,62,63,64,65,66,77,],[-43,-44,-39,-40,-42,45,45,45,-41,-45,45,45,45,-33,45,45,-32,-46,]),'SEMICOLON':([2,3,4,8,12,15,16,18,20,21,23,24,25,28,30,31,33,36,38,51,55,56,60,61,62,63,64,65,66,67,77,],[-16,-43,-21,-17,-50,-44,-39,-20,-48,-40,-18,-42,-51,50,-22,-38,-37,-47,-41,-45,-19,-49,-36,-34,-30,-33,-35,-31,-32,-15,-46,]),'NEWLINE':([0,2,3,4,8,10,12,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,30,31,33,36,38,47,48,49,50,51,54,55,56,60,61,62,63,64,65,66,67,68,72,74,75,77,80,86,],[10,-16,-43,-21,-17,-4,-50,-12,-44,-39,-11,-20,-5,-48,-40,-24,-18,-42,-51,-23,47,49,-22,-38,-37,-47,-41,-2,-3,-13,68,-45,73,-19,-49,-36,-34,-30,-33,-35,-31,-32,-15,-14,73,-26,-25,-46,-6,-27,]),'LT':([3,15,16,21,24,25,31,33,38,51,60,61,62,63,64,65,66,77,],[-43,-44,-39,-40,-42,40,-38,-37,-41,-45,-36,-34,-30,-33,-35,-31,-32,-46,]),'COMMA':([3,12,15,16,20,21,24,25,31,33,38,51,56,57,58,59,60,61,62,63,64,65,66,69,70,77,82,83,],[-43,-50,-44,-39,36,-40,-42,-51,-38,-37,-41,-45,-49,-53,-54,76,-36,-34,-30,-33,-35,-31,-32,78,-10,-46,-52,-9,]),'DEF':([0,10,14,17,19,22,26,27,47,48,49,68,74,75,80,81,84,85,86,87,],[7,-4,-12,-11,-5,-24,-23,7,-2,-3,-13,-14,-26,-25,-6,7,7,-29,-27,-28,]),'PLUS':([0,1,3,5,6,10,11,13,14,15,16,17,19,21,22,24,25,26,27,31,33,35,36,37,38,39,40,41,42,43,44,45,47,48,49,50,51,54,60,61,62,63,64,65,66,68,72,74,75,76,77,80,81,84,85,86,87,],[11,11,-43,11,11,-4,11,11,-12,-44,-39,-11,-5,-40,-24,-42,41,-23,11,-38,-37,11,11,11,-41,11,11,11,11,11,11,11,-2,-3,-13,11,-45,11,41,41,-30,-33,41,-31,-32,-14,11,-26,-25,11,-46,-6,11,11,-29,-27,-28,]),'ASSIGN':([3,12,15,16,18,20,21,24,25,31,33,36,38,51,56,60,61,62,63,64,65,66,77,],[-43,-50,-44,-39,35,-48,-40,-42,-51,-38,-37,-47,-41,-45,-49,-36,-34,-30,-33,-35,-31,-32,-46,]),'$end':([9,46,],[0,-1,]),'GT':([3,15,16,21,24,25,31,33,38,51,60,61,62,63,64,65,66,77,],[-43,-44,-39,-40,-42,39,-38,-37,-41,-45,-36,-34,-30,-33,-35,-31,-32,-46,]),'STRING':([0,1,5,6,10,11,13,14,17,19,22,26,27,35,36,37,39,40,41,42,43,44,45,47,48,49,50,54,68,72,74,75,76,80,81,84,85,86,87,],[15,15,15,15,-4,15,15,-12,-11,-5,-24,-23,15,15,15,15,15,15,15,15,15,15,15,-2,-3,-13,15,15,-14,15,-26,-25,15,-6,15,15,-29,-27,-28,]),'EQ':([3,15,16,21,24,25,31,33,38,51,60,61,62,63,64,65,66,77,],[-43,-44,-39,-40,-42,43,-38,-37,-41,-45,-36,-34,-30,-33,-35,-31,-32,-46,]),'IF':([0,10,14,17,19,22,26,27,47,48,49,68,74,75,80,81,84,85,86,87,],[13,-4,-12,-11,-5,-24,-23,13,-2,-3,-13,-14,-26,-25,-6,13,13,-29,-27,-28,]),'INDENT':([73,],[81,]),'NAME':([0,1,5,6,7,10,11,13,14,17,19,22,26,27,35,36,37,39,40,41,42,43,44,45,47,48,49,50,52,54,68,72,74,75,76,78,80,81,84,85,86,87,],[24,24,24,24,32,-4,24,24,-12,-11,-5,-24,-23,24,24,24,24,24,24,24,24,24,24,24,-2,-3,-13,24,70,24,-14,24,-26,-25,24,83,-6,24,24,-29,-27,-28,]),}
+_lr_action_items = {'identifier':([0,3,14,18,28,29,32,33,36,47,],[13,13,13,35,-4,35,35,35,35,35,]),'LPAREN':([0,3,13,14,17,18,19,20,21,22,23,24,25,26,28,29,32,33,34,35,36,39,46,47,],[14,14,-13,14,33,36,-21,-22,-14,-15,-16,-17,-18,-19,-4,36,36,36,33,-13,36,-20,-23,36,]),'MINUS':([0,3,14,28,29,32,33,36,47,],[18,18,18,-4,18,18,18,18,18,]),'integer':([0,3,14,18,28,29,32,33,36,47,],[23,23,23,23,-4,23,23,23,23,23,]),'TRUE':([0,3,14,18,28,29,32,33,36,47,],[24,24,24,24,-4,24,24,24,24,24,]),'FALSE':([0,3,14,18,28,29,32,33,36,47,],[25,25,25,25,-4,25,25,25,25,25,]),'$end':([1,2,3,27,28,],[0,-1,-3,-2,-4,]),'NEWLINE':([4,5,6,7,8,10,12,13,15,16,17,19,20,21,22,23,24,25,26,34,35,37,39,40,46,],[28,-5,-6,-7,-8,-29,-30,-13,-31,-33,-34,-21,-22,-14,-15,-16,-17,-18,-19,-35,-13,-9,-20,-32,-23,]),'ASSIGN':([9,11,13,38,],[29,-10,-11,-12,]),'RPAREN':([10,11,12,13,15,16,17,19,20,21,22,23,24,25,26,30,31,33,34,35,38,39,40,41,42,43,44,45,46,48,],[-29,-10,-30,-11,-31,-33,-34,-21,-22,-14,-15,-16,-17,-18,-19,38,39,-36,-35,-13,-12,-20,-32,46,-24,-26,-27,-28,-23,-25,]),'COMMA':([10,12,15,16,17,19,20,21,22,23,24,25,26,33,34,35,39,40,42,43,44,45,46,48,],[-29,-30,-31,-33,-34,-21,-22,-14,-15,-16,-17,-18,-19,-36,-35,-13,-20,-32,47,-26,-27,-28,-23,-25,]),'PLUS':([13,15,16,17,19,20,21,22,23,24,25,26,34,35,39,40,46,],[-13,32,-33,-34,-21,-22,-14,-15,-16,-17,-18,-19,-35,-13,-20,-32,-23,]),}
 
 _lr_action = {}
 for _k, _v in _lr_action_items.items():
@@ -17,7 +17,7 @@ for _k, _v in _lr_action_items.items():
       _lr_action[_x][_k] = _y
 del _lr_action_items
 
-_lr_goto_items = {'small_stmt':([0,27,50,54,72,81,84,],[2,2,67,2,2,2,2,]),'argument':([37,76,],[57,82,]),'return_stmt':([0,27,50,54,72,81,84,],[4,4,4,4,4,4,4,]),'arglist':([37,],[59,]),'flow_stmt':([0,27,50,54,72,81,84,],[8,8,8,8,8,8,8,]),'file_input_end':([0,],[9,]),'parameters':([32,],[53,]),'stmts':([81,],[84,]),'test':([0,1,5,13,27,35,36,37,50,54,72,76,81,84,],[12,12,12,34,12,12,56,58,12,12,12,58,12,12,]),'suite':([54,72,],[75,80,]),'compound_stmt':([0,27,81,84,],[14,14,14,14,]),'power':([0,1,5,6,11,13,27,35,36,37,39,40,41,42,43,44,45,50,54,72,76,81,84,],[16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,]),'simple_stmt':([0,27,54,72,81,84,],[17,17,74,74,17,17,]),'testlist':([0,1,5,27,35,50,54,72,81,84,],[18,29,30,18,55,18,18,18,18,18,]),'stmt':([0,27,81,84,],[19,48,85,87,]),'testlist_multi':([0,1,5,27,35,50,54,72,81,84,],[20,20,20,20,20,20,20,20,20,20,]),'atom':([0,1,5,6,11,13,27,35,36,37,39,40,41,42,43,44,45,50,54,72,76,81,84,],[21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,]),'funcdef':([0,27,81,84,],[22,22,22,22,]),'expr_stmt':([0,27,50,54,72,81,84,],[23,23,23,23,23,23,23,]),'comparison':([0,1,5,6,11,13,27,35,36,37,39,40,41,42,43,44,45,50,54,72,76,81,84,],[25,25,25,31,33,25,25,25,25,25,60,61,62,63,64,65,66,25,25,25,25,25,25,]),'if_stmt':([0,27,81,84,],[26,26,26,26,]),'file_input':([0,],[27,]),'varargslist':([52,],[69,]),'small_stmts':([0,27,54,72,81,84,],[28,28,28,28,28,28,]),'trailer':([21,],[38,]),}
+_lr_goto_items = {'module':([0,],[1,]),'statements':([0,3,],[2,27,]),'statement':([0,3,],[3,3,]),'stmt_list':([0,3,],[4,4,]),'simple_stmt':([0,3,],[5,5,]),'expression_stmt':([0,3,],[6,6,]),'assignment_stmt':([0,3,],[7,7,]),'expression':([0,3,14,29,33,36,47,],[8,8,31,37,45,31,45,]),'target_list':([0,3,14,],[9,9,30,]),'conditional_expression':([0,3,14,29,33,36,47,],[10,10,10,10,10,10,10,]),'target':([0,3,14,],[11,11,11,]),'or_test':([0,3,14,29,33,36,47,],[12,12,12,12,12,12,12,]),'a_expr':([0,3,14,29,33,36,47,],[15,15,15,15,15,15,15,]),'u_expr':([0,3,14,29,32,33,36,47,],[16,16,16,16,40,16,16,16,]),'primary':([0,3,14,18,29,32,33,36,47,],[17,17,17,34,17,17,17,17,17,]),'atom':([0,3,14,18,29,32,33,36,47,],[19,19,19,19,19,19,19,19,19,]),'call':([0,3,14,18,29,32,33,36,47,],[20,20,20,20,20,20,20,20,20,]),'literal':([0,3,14,18,29,32,33,36,47,],[21,21,21,21,21,21,21,21,21,]),'enclosure':([0,3,14,18,29,32,33,36,47,],[22,22,22,22,22,22,22,22,22,]),'parenth_form':([0,3,14,18,29,32,33,36,47,],[26,26,26,26,26,26,26,26,26,]),'argument_list':([33,],[41,]),'positional_arguments':([33,],[42,]),'positional_item':([33,47,],[43,48,]),'empty':([33,],[44,]),}
 
 _lr_goto = {}
 for _k, _v in _lr_goto_items.items():
@@ -26,59 +26,41 @@ for _k, _v in _lr_goto_items.items():
        _lr_goto[_x][_k] = _y
 del _lr_goto_items
 _lr_productions = [
-  ("S' -> file_input_end","S'",1,None,None,None),
-  ('file_input_end -> file_input ENDMARKER','file_input_end',2,'p_file_input_end','p0.py',387),
-  ('file_input -> file_input NEWLINE','file_input',2,'p_file_input','p0.py',392),
-  ('file_input -> file_input stmt','file_input',2,'p_file_input','p0.py',393),
-  ('file_input -> NEWLINE','file_input',1,'p_file_input','p0.py',394),
-  ('file_input -> stmt','file_input',1,'p_file_input','p0.py',395),
-  ('funcdef -> DEF NAME parameters COLON suite','funcdef',5,'p_funcdef','p0.py',411),
-  ('parameters -> LPAR RPAR','parameters',2,'p_parameters','p0.py',418),
-  ('parameters -> LPAR varargslist RPAR','parameters',3,'p_parameters','p0.py',419),
-  ('varargslist -> varargslist COMMA NAME','varargslist',3,'p_varargslist','p0.py',429),
-  ('varargslist -> NAME','varargslist',1,'p_varargslist','p0.py',430),
-  ('stmt -> simple_stmt','stmt',1,'p_stmt_simple','p0.py',440),
-  ('stmt -> compound_stmt','stmt',1,'p_stmt_compound','p0.py',446),
-  ('simple_stmt -> small_stmts NEWLINE','simple_stmt',2,'p_simple_stmt','p0.py',453),
-  ('simple_stmt -> small_stmts SEMICOLON NEWLINE','simple_stmt',3,'p_simple_stmt','p0.py',454),
-  ('small_stmts -> small_stmts SEMICOLON small_stmt','small_stmts',3,'p_small_stmts','p0.py',459),
-  ('small_stmts -> small_stmt','small_stmts',1,'p_small_stmts','p0.py',460),
-  ('small_stmt -> flow_stmt','small_stmt',1,'p_small_stmt','p0.py',471),
-  ('small_stmt -> expr_stmt','small_stmt',1,'p_small_stmt','p0.py',472),
-  ('expr_stmt -> testlist ASSIGN testlist','expr_stmt',3,'p_expr_stmt','p0.py',482),
-  ('expr_stmt -> testlist','expr_stmt',1,'p_expr_stmt','p0.py',483),
-  ('flow_stmt -> return_stmt','flow_stmt',1,'p_flow_stmt','p0.py',492),
-  ('return_stmt -> RETURN testlist','return_stmt',2,'p_return_stmt','p0.py',499),
-  ('compound_stmt -> if_stmt','compound_stmt',1,'p_compound_stmt','p0.py',504),
-  ('compound_stmt -> funcdef','compound_stmt',1,'p_compound_stmt','p0.py',505),
-  ('if_stmt -> IF test COLON suite','if_stmt',4,'p_if_stmt','p0.py',510),
-  ('suite -> simple_stmt','suite',1,'p_suite','p0.py',515),
-  ('suite -> NEWLINE INDENT stmts DEDENT','suite',4,'p_suite','p0.py',516),
-  ('stmts -> stmts stmt','stmts',2,'p_stmts','p0.py',524),
-  ('stmts -> stmt','stmts',1,'p_stmts','p0.py',525),
-  ('comparison -> comparison PLUS comparison','comparison',3,'p_comparison','p0.py',573),
-  ('comparison -> comparison MINUS comparison','comparison',3,'p_comparison','p0.py',574),
-  ('comparison -> comparison MULT comparison','comparison',3,'p_comparison','p0.py',575),
-  ('comparison -> comparison DIV comparison','comparison',3,'p_comparison','p0.py',576),
-  ('comparison -> comparison LT comparison','comparison',3,'p_comparison','p0.py',577),
-  ('comparison -> comparison EQ comparison','comparison',3,'p_comparison','p0.py',578),
-  ('comparison -> comparison GT comparison','comparison',3,'p_comparison','p0.py',579),
-  ('comparison -> PLUS comparison','comparison',2,'p_comparison','p0.py',580),
-  ('comparison -> MINUS comparison','comparison',2,'p_comparison','p0.py',581),
-  ('comparison -> power','comparison',1,'p_comparison','p0.py',582),
-  ('power -> atom','power',1,'p_power','p0.py',596),
-  ('power -> atom trailer','power',2,'p_power','p0.py',597),
-  ('atom -> NAME','atom',1,'p_atom_name','p0.py',608),
-  ('atom -> NUMBER','atom',1,'p_atom_number','p0.py',613),
-  ('atom -> STRING','atom',1,'p_atom_number','p0.py',614),
-  ('atom -> LPAR testlist RPAR','atom',3,'p_atom_tuple','p0.py',619),
-  ('trailer -> LPAR arglist RPAR','trailer',3,'p_trailer','p0.py',626),
-  ('testlist -> testlist_multi COMMA','testlist',2,'p_testlist','p0.py',634),
-  ('testlist -> testlist_multi','testlist',1,'p_testlist','p0.py',635),
-  ('testlist_multi -> testlist_multi COMMA test','testlist_multi',3,'p_testlist_multi','p0.py',650),
-  ('testlist_multi -> test','testlist_multi',1,'p_testlist_multi','p0.py',651),
-  ('test -> comparison','test',1,'p_test','p0.py',666),
-  ('arglist -> arglist COMMA argument','arglist',3,'p_arglist','p0.py',673),
-  ('arglist -> argument','arglist',1,'p_arglist','p0.py',674),
-  ('argument -> test','argument',1,'p_argument','p0.py',684),
+  ("S' -> module","S'",1,None,None,None),
+  ('module -> statements','module',1,'p_module','p0.py',189),
+  ('statements -> statement statements','statements',2,'p_statements','p0.py',196),
+  ('statements -> statement','statements',1,'p_statements','p0.py',197),
+  ('statement -> stmt_list NEWLINE','statement',2,'p_statement','p0.py',207),
+  ('stmt_list -> simple_stmt','stmt_list',1,'p_stmt_list','p0.py',216),
+  ('simple_stmt -> expression_stmt','simple_stmt',1,'p_simple_stmt','p0.py',223),
+  ('simple_stmt -> assignment_stmt','simple_stmt',1,'p_simple_stmt','p0.py',224),
+  ('expression_stmt -> expression','expression_stmt',1,'p_expression_stmt','p0.py',231),
+  ('assignment_stmt -> target_list ASSIGN expression','assignment_stmt',3,'p_assignment_stmt','p0.py',239),
+  ('target_list -> target','target_list',1,'p_target_list','p0.py',246),
+  ('target -> identifier','target',1,'p_target','p0.py',253),
+  ('target -> LPAREN target_list RPAREN','target',3,'p_target','p0.py',254),
+  ('atom -> identifier','atom',1,'p_atom','p0.py',264),
+  ('atom -> literal','atom',1,'p_atom','p0.py',265),
+  ('atom -> enclosure','atom',1,'p_atom','p0.py',266),
+  ('literal -> integer','literal',1,'p_literal','p0.py',276),
+  ('literal -> TRUE','literal',1,'p_literal','p0.py',277),
+  ('literal -> FALSE','literal',1,'p_literal','p0.py',278),
+  ('enclosure -> parenth_form','enclosure',1,'p_enclosure','p0.py',285),
+  ('parenth_form -> LPAREN expression RPAREN','parenth_form',3,'p_parenth_form','p0.py',292),
+  ('primary -> atom','primary',1,'p_primary','p0.py',299),
+  ('primary -> call','primary',1,'p_primary','p0.py',300),
+  ('call -> primary LPAREN argument_list RPAREN','call',4,'p_call','p0.py',307),
+  ('argument_list -> positional_arguments','argument_list',1,'p_argument_list','p0.py',314),
+  ('positional_arguments -> positional_arguments COMMA positional_item','positional_arguments',3,'p_positional_arguments','p0.py',321),
+  ('positional_arguments -> positional_item','positional_arguments',1,'p_positional_arguments','p0.py',322),
+  ('positional_arguments -> empty','positional_arguments',1,'p_positional_arguments','p0.py',323),
+  ('positional_item -> expression','positional_item',1,'p_positional_item','p0.py',333),
+  ('expression -> conditional_expression','expression',1,'p_expression','p0.py',340),
+  ('conditional_expression -> or_test','conditional_expression',1,'p_conditional_expression','p0.py',347),
+  ('or_test -> a_expr','or_test',1,'p_or_test','p0.py',354),
+  ('a_expr -> a_expr PLUS u_expr','a_expr',3,'p_a_expr','p0.py',361),
+  ('a_expr -> u_expr','a_expr',1,'p_a_expr','p0.py',362),
+  ('u_expr -> primary','u_expr',1,'p_u_expr','p0.py',372),
+  ('u_expr -> MINUS primary','u_expr',2,'p_u_expr','p0.py',373),
+  ('empty -> <empty>','empty',0,'p_empty','p0.py',383),
 ]
