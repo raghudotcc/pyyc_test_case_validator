@@ -1,2 +1,2 @@
-x = input()
+x = int(input())
 print(x)

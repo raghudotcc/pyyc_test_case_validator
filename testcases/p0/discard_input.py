@@ -1,2 +1,2 @@
-input() + input()
-input()
+int(input()) + int(input())
+int(input())

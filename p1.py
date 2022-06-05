@@ -8,15 +8,30 @@ import logging
 
 
 class P0Lexer:
-    tokens = ('INT',
-              'NAME',
+    reserved = {
+        'if': 'IF',
+        'else': 'ELSE',
+        'while': 'WHILE',
+        'return': 'RETURN',
+        'true': 'TRUE',
+        'false': 'FALSE',
+        'and': 'AND',
+        'or': 'OR',
+        'not': 'NOT',
+        'is': 'IS',
+        'lambda': 'LAMBDA',
+        'def': 'DEF',
+        'class': 'CLASS',
+    }
+    tokens = ['integer',
+              'identifier',
               'EQUALS', 
               'LPAREN', 
               'RPAREN',  
               'MINUS', 
               'PLUS',
               'COMMA',
-              'NEWLINE')
+              'NEWLINE'] + list(reserved.values())
 
     t_PLUS = r'\+'
     t_MINUS = r'-'
@@ -31,13 +46,18 @@ class P0Lexer:
         self.lexer = lex.lex(module=self)
         self.lexer.begin('INITIAL')
 
-    def t_NAME(self, t):
+    def t_identifier(self, t):
         r'[a-zA-Z_][a-zA-Z_0-9]*'
+        t.type = reserved.get(t.value, 'identifier')
         return t
 
-    def t_INT(self, t):
+    def t_integer(t):
         r'\d+'
-        t.value = int(t.value)
+        try:
+            t.value = int(t.value)
+        except ValueError:
+            logging.error("Integer value too large %d", t.value)
+            t.value = 0
         return t
 
     def t_NEWLINE(self, t):
@@ -48,6 +68,7 @@ class P0Lexer:
     def t_error(self, t):
         logging.error("Illegal character '%s'" % t.value[0])
         exit(1)
+
 
 
 # Grammar for P0:
@@ -122,7 +143,7 @@ class P0Parser:
     def p_simple_statement(self, p):
         '''
         simple_statement : assignment
-                        | d_expression
+                        | expression_stmt
         '''
         p[0] = p[1]
     
@@ -132,9 +153,9 @@ class P0Parser:
         '''
         p[0] = Assign(targets=[Name(id=p[1], ctx=Store())], value=p[3])
 
-    def p_d_expression(self, p):
+    def p_expression_stmt(self, p):
         '''
-        d_expression : expression 
+        expression_stmt : expression 
         '''
         p[0] = Expr(value=p[1])
 
@@ -143,7 +164,7 @@ class P0Parser:
         expression : binary_expression
                     | unary_expression
                     | call_expression
-                    | LPAREN expression RPAREN
+                    | paren_expression
                     | atom
         '''
         if len(p) == 2:
@@ -165,9 +186,15 @@ class P0Parser:
 
     def p_call_expression(self, p):
         '''
-        call_expression : NAME LPAREN arguments RPAREN
+        call_expression : primary LPAREN arguments RPAREN
         '''
         p[0] = Call(func=p[1], args=p[3])
+
+    def p_parent_expr(self, p):
+        '''
+        paren_expression : LPAREN expression RPAREN
+        '''
+        p[0] = p[2]
 
 
     def p_arguments(self, p):
@@ -274,7 +301,7 @@ logging.basicConfig(
     format=FORMAT, level=logging.INFO)
 
 x = '''
-f()
+x = get_func_ptr(function)()
 '''
 P0Parser().parser.parse(x)
 logging.info(ast.dump(ast.parse(x)))

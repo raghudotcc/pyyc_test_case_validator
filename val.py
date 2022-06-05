@@ -124,11 +124,11 @@ def exec_prog(file):
                 raise Exception("Not enough user inputs in the input" \
                     " file: {}".format(infilename))
             else:
-                prog = re_input.sub(lambda x: 'bool(input())' \
-                        if inputs.pop(0) in ['True', 'False'] else 'int(input())', prog)
+                prog = re_input.sub(lambda x: 'bool(int(input()))' \
+                        if inputs.pop(0) in ['True', 'False'] else 'int(int(input()))', prog)
                 # debug modified prog
-                print("file: {}".format(file))
-                print(prog)
+                # print("file: {}".format(file))
+                # print(prog)
             
             return prog
 
