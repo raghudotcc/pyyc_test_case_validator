@@ -5,9 +5,6 @@ from ply.lex import TOKEN
 from ast import *
 import ast
 import logging
-import copy
-
-# Lexer
 
 
 class Lexer:
@@ -103,12 +100,10 @@ class Lexer:
         logging.error("Unknown Symbol: %s" % t.value[0])
         exit(1)
 
-#####################
-# Handle Indentation
-#####################
-
 
 def _new_token(type):
+    """Create a new token with the given type. Useful
+    for creating indent/dedent tokens dynamically."""
     tok = lex.LexToken()
     tok.type = type
     tok.value = None
@@ -164,6 +159,24 @@ class IndentWrapper(object):
         return t
 
 
+class Parser(object):
+    tokens = Lexer.tokens
+
+    precedence = (
+        ('left', 'OR'),
+        ('left', 'AND'),
+        ('left', 'NOT'),
+        ('right', 'EQUALS'),
+        ('left', 'PLUS', 'MINUS'),
+        ('right', 'UMINUS'),
+    )
+
+    def __init__(self):
+        self.parser = yacc.yacc(module=self)
+
+    def parse(self, data, lexer):
+        return self.parser.parse(data, lexer=lexer)
+
 FORMAT = '[%(levelname)s] File: %(filename)s, Line: %(lineno)d, %(message)s'
 logging.basicConfig(
     format=FORMAT, level=logging.INFO)
@@ -172,17 +185,16 @@ logging.basicConfig(
 # print(res)
 
 program = '''
-class A:
-    def __init__(self):
-        self.a = 1
+x + y
 '''
 
 lexer = Lexer()
 lexer = IndentWrapper(lexer)
-lexer.input(program)
+# lexer.input(program)
+# while True:
+#     tok = lexer.token()
+#     if not tok:
+#         break      # No more input
+#     print(tok)
 
-while True:
-    tok = lexer.token()
-    if not tok:
-        break      # No more input
-    print(tok)
+Parser().parse(program, lexer)
