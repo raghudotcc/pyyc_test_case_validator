@@ -14,7 +14,8 @@ without error.
 
 ```python
 Usage: python3 val.py --subset=<python-subset> \
-                      --input_file=<file|dir>
+                      --input_file=<file|dir> \
+                      [--verbose]
 
 Example: python3 val.py --subset=P0 --input=test.py
 ```

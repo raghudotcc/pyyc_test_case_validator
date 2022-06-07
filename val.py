@@ -9,11 +9,16 @@ without error.
 
 Usage: python3 val.py --subset=<python-subset> \
                       --input_file=<file|dir> \
-                        [--verbose]
+                      [--verbose]
 
 Example: python3 val.py --subset=P0 --input=test.py
 """
 
+from collections import deque
+from pathlib import Path
+from inspect import currentframe, getframeinfo
+import ply.yacc as yacc
+import ply.lex as lex
 import ast
 from ast import *
 import subprocess
@@ -25,17 +30,18 @@ subset_tbl = ['p0', 'p1', 'p2', 'p3']
 python_exe = 'python3'
 nodes = [
     [Module, Assign, Name,
-    Constant, Expr, Call,
-    UnaryOp, BinOp, USub,
-    Add, Store, Load], # < P0
+     Constant, Expr, Call,
+     UnaryOp, BinOp, USub,
+     Add, Store, Load],  # < P0
     [List, Dict, Subscript,
-    BoolOp, And, Or, Not,
-    Eq, NotEq, Is,
-    IfExp, Compare], # < P1
-    [Return, FunctionDef, 
-    Lambda, arguments, arg], # < P2
-    [If, While, ClassDef] # < P3
+     BoolOp, And, Or, Not,
+     Eq, NotEq, Is,
+     IfExp, Compare],  # < P1
+    [Return, FunctionDef,
+     Lambda, arguments, arg],  # < P2
+    [If, While, ClassDef]  # < P3
 ]
+
 
 def popen_result(popen):
     (out, err) = popen.communicate()
@@ -44,24 +50,74 @@ def popen_result(popen):
         if not (out is None):
             verboseprint(out)
         return False
-    elif err: # stderr is not empty or None
+    elif err:  # stderr is not empty or None
         return False
     else:
         return True
+
+def validate(subset_func):
+    """Decorator to get valid nodes from subset func, 
+    walk the AST and verify if input prog has valid AST nodes."""
+    def wrapper(prog):
+        tree = ast.parse(prog)
+        valid_nodes = subset_func(prog)
+        for node in ast.walk(tree):
+            if type(node) not in valid_nodes:
+                verboseprint("Invalid node type: {}".format(type(node)))
+                return False
+        return True
+    return wrapper
+
+
+@validate
+def p0(prog):
+    return nodes[0]
+
+
+@validate
+def p1(prog):
+    return nodes[0] \
+        + nodes[1]
+
+
+@validate
+def p2(prog):
+    return nodes[0] \
+        + nodes[1] \
+        + nodes[2]
+
+
+@validate
+def p3(prog):
+    return nodes[0] \
+        + nodes[1] \
+        + nodes[2] \
+        + nodes[3]
+
+
+# create a dict containing the subset as key
+# and the function with the same name as the value
+dispatch_tbl = {subset: eval(subset) for subset in subset_tbl}
+
+
+def is_valid_subset(subset):
+    if subset.lower() not in subset_tbl:
+        verboseprint("Invalid python subset."
+                     " Supported subsets: {}".format(subset_tbl))
+        return False
+    return True
+
+
+def traverse(subset, f):
+    """validate the AST nodes using the validate decorator"""
+    prog = f.read()
+    return dispatch_tbl[subset.lower()](prog)
+
 
 ##########################
 # Ply parser
 ##########################
 
-from collections import deque
-import ply.lex as lex
-import ply.yacc as yacc
-from ply.lex import TOKEN
-from ast import *
-import ast
-
-from inspect import currentframe, getframeinfo
-from pathlib import Path
 
 def get_fileinfo():
     """Get the file name, function name and line number of the current frame."""
@@ -70,7 +126,8 @@ def get_fileinfo():
     lineno = cf.f_back.f_lineno
     funcname = cf.f_back.f_code.co_name
     return Path(filename).stem, funcname, lineno
-    
+
+
 class Lexer:
     reserved = {
         'if': 'IF',
@@ -151,7 +208,8 @@ class Lexer:
         try:
             t.value = int(t.value)
         except ValueError:
-            verboseprint(get_fileinfo(), "Integer value too large {}".format(t.value))
+            verboseprint(get_fileinfo(),
+                         "Integer value too large {}".format(t.value))
             t.value = 0
         return t
 
@@ -259,7 +317,7 @@ class Parser(object):
         else:
             p[0] = [p[1]] + p[2]
         verboseprint(get_fileinfo(), p[0])
-        
+
     def p_statement(self, p):
         """
         statement : stmt_list NEWLINE
@@ -373,7 +431,7 @@ class Parser(object):
         """
         p[0] = List(elts=p[2])
         verboseprint(get_fileinfo(), ast.dump(p[0]))
-    
+
     def p_dict_display(self, p):
         """
         dict_display : LBRACE key_datum_list RBRACE
@@ -398,7 +456,6 @@ class Parser(object):
                 p[0] = Dict(keys=[p[1][0]], values=[p[1][1]])
         verboseprint(get_fileinfo(), ast.dump(p[0]))
 
-    
     def p_key_datum(self, p):
         """
         key_datum : expression COLON expression
@@ -406,14 +463,12 @@ class Parser(object):
         p[0] = (p[1], p[3])
         verboseprint(get_fileinfo(), p[0])
 
-
     def p_subscription(self, p):
         """
         subscription : primary LBRACKET expression_list RBRACKET
         """
         p[0] = Subscript(value=p[1], slice=p[3])
         verboseprint(get_fileinfo(), ast.dump(p[0]))
-
 
     def p_primary(self, p):
         """
@@ -587,7 +642,7 @@ class Parser(object):
         else:
             p[0] = If(test=p[2], body=p[4], orelse=p[7])
         verboseprint(get_fileinfo(), ast.dump(p[0]))
-    
+
     def p_while_stmt(self, p):
         """
         while_stmt : WHILE expression COLON suite
@@ -626,7 +681,7 @@ class Parser(object):
         else:
             p[0] = p[3]
         verboseprint(get_fileinfo(), p[0])
-    
+
     def p_u_expr(self, p):
         """
         u_expr : primary
@@ -651,15 +706,15 @@ class Parser(object):
         if p:
             err_tok = p
         verboseprint(get_fileinfo(), '\033[1;31m Syntax error at "{}".\033[0m \n \033[1;31mParser State:{} {} . {}\033[0m'
-                    .format(err_tok,
-                            self.parser.state,
-                            stack_state_str,
-                            p))
+                     .format(err_tok,
+                             self.parser.state,
+                             stack_state_str,
+                             p))
         exit(1)
 
 
 def pparse(subset, codef):
-    """call ply parser"""    
+    """call ply parser"""
     with open(codef.name, 'r') as f:
         code = f.read()
     # Hack to get the Indentation working
@@ -670,71 +725,22 @@ def pparse(subset, codef):
     parser = Parser()
     return parser.parse(code, lexer=lexer)
 
-def validate(subset_func):
-    """Decorator to get valid nodes from subset func, 
-    walk the AST and verify if input prog has valid AST nodes."""
-    def wrapper(prog):
-        tree = ast.parse(prog)
-        valid_nodes = subset_func(prog)
-        for node in ast.walk(tree):
-            if type(node) not in valid_nodes:
-                verboseprint("Invalid node type: {}".format(type(node)))
-                return False
-        return True
-    return wrapper
-
-@validate
-def p0(prog):
-    return nodes[0]
-
-@validate
-def p1(prog):
-    return nodes[0] \
-            + nodes[1]
-
-@validate
-def p2(prog):
-    return nodes[0] \
-            + nodes[1] \
-            + nodes[2]
-
-@validate
-def p3(prog):
-    return nodes[0] \
-            + nodes[1] \
-            + nodes[2] \
-            + nodes[3]
-
-# create a dict containing the subset as key
-# and the function with the same name as the value
-dispatch_tbl = { subset : eval(subset) for subset in subset_tbl }
-
-def is_valid_subset(subset):
-    if subset.lower() not in subset_tbl:
-        verboseprint("Invalid python subset." \
-            " Supported subsets: {}".format(subset_tbl))
-        return False
-    return True
-
-def traverse(subset, f):
-    """validate the AST nodes using the validate decorator"""
-    prog = f.read()
-    return dispatch_tbl[subset.lower()](prog)
 
 def exec_prog(file):
     infilename = os.path.splitext(file)[0] + '.in'
     cmd = [python_exe, file]
     if os.path.isfile(infilename):
         with open(infilename, 'r') as infile:
-            popen = subprocess.Popen(cmd, 
-                        stdin=infile, 
-                        stdout=subprocess.PIPE)
+            popen = subprocess.Popen(cmd,
+                                     stdin=infile,
+                                     stdout=subprocess.PIPE)
     else:
-        popen = subprocess.Popen(cmd, 
-            stdin=subprocess.PIPE, 
-            stdout=subprocess.PIPE)
+        popen = subprocess.Popen(cmd,
+                                 stdin=subprocess.PIPE,
+                                 stdout=subprocess.PIPE)
     result = popen_result(popen)
     return result
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Validate python subset")
@@ -745,6 +751,7 @@ def parse_args():
     parser.add_argument(
         "--verbose", help="print verbose output", action="store_true")
     return parser.parse_args()
+
 
 def main():
     args = parse_args()
@@ -762,10 +769,10 @@ def main():
         for file in prog_files:
             with open(file, 'r') as f:
                 assert traverse(args.subset, f) \
-                        and pparse(args.subset, f) \
-                        and exec_prog(file) == True, \
-                        "invalid program: {}".format(file)
+                    and pparse(args.subset, f) \
+                    and exec_prog(file) == True, \
+                    "invalid program: {}".format(file)
+
 
 if __name__ == "__main__":
     main()
-
