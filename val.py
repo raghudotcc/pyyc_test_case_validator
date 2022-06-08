@@ -17,6 +17,7 @@ Example: python3 val.py --subset=P0 --input=test.py
 from collections import deque
 from pathlib import Path
 from inspect import currentframe, getframeinfo
+from tabnanny import verbose
 import ply.yacc as yacc
 import ply.lex as lex
 import ast
@@ -24,7 +25,7 @@ from ast import *
 import subprocess
 import argparse
 import os
-import re
+from grammar import *
 
 subset_tbl = ['p0', 'p1', 'p2', 'p3']
 python_exe = 'python3'
@@ -41,7 +42,6 @@ nodes = [
      Lambda, arguments, arg],  # < P2
     [If, While, ClassDef]  # < P3
 ]
-
 
 def popen_result(popen):
     (out, err) = popen.communicate()
@@ -68,17 +68,14 @@ def validate(subset_func):
         return True
     return wrapper
 
-
 @validate
 def p0(prog):
     return nodes[0]
-
 
 @validate
 def p1(prog):
     return nodes[0] \
         + nodes[1]
-
 
 @validate
 def p2(prog):
@@ -86,14 +83,12 @@ def p2(prog):
         + nodes[1] \
         + nodes[2]
 
-
 @validate
 def p3(prog):
     return nodes[0] \
         + nodes[1] \
         + nodes[2] \
         + nodes[3]
-
 
 # create a dict containing the subset as key
 # and the function with the same name as the value
@@ -293,158 +288,81 @@ class Parser(object):
         ('right', 'UMINUS'),
     )
 
-    def __init__(self):
+    def __init__(self, subset):
+        # get all the function names 
+        # in this class starting with p_
+        self.functions = [getattr(Parser, f) for f in dir(self) if f.startswith('p_')]
+        for fattr in grammar[subset]:
+            for f in self.functions:
+                if f.__name__ == fattr[0]:
+                    f.__doc__ = fattr[1]
         self.parser = yacc.yacc(module=self)
 
     def parse(self, data, lexer):
         return self.parser.parse(data, lexer=lexer)
 
     def p_module(self, p):
-        """
-        module : statements
-               | NEWLINE
-        """
         p[0] = Module(body=p[1]) if p[1] else Module(body=[])
         verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_statements(self, p):
-        """
-        statements : statement statements
-                   | statement
-        """
         if len(p) == 2:
             p[0] = [p[1]]
         else:
             p[0] = [p[1]] + p[2]
-        verboseprint(get_fileinfo(), p[0])
 
     def p_statement(self, p):
-        """
-        statement : stmt_list NEWLINE
-                  | compound_stmt
-        """
         p[0] = p[1]
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     # we don't support multiple statements in a single line
     # so we don't care about semicolons
     def p_stmt_list(self, p):
-        """
-        stmt_list : simple_stmt
-        """
         p[0] = p[1]
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_simple_stmt(self, p):
-        """
-        simple_stmt : expression_stmt
-                    | assignment_stmt
-                    | return_stmt
-        """
         p[0] = p[1]
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_compound_stmt(self, p):
-        """
-        compound_stmt : if_stmt
-                      | while_stmt
-                      | funcdef
-        """
         p[0] = p[1]
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_expression_stmt(self, p):
-        """
-        expression_stmt : expression
-        """
         p[0] = Expr(value=p[1])
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     # we don't support multiple targets in a single assignment
     def p_assignment_stmt(self, p):
-        """
-        assignment_stmt : target_list ASSIGN expression
-        """
         p[0] = Assign(targets=p[1], value=p[3])
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_target_list(self, p):
-        """
-        target_list : target
-        """
         p[0] = [p[1]]
-        verboseprint(get_fileinfo(), p[0])
 
     def p_target(self, p):
-        """
-        target : identifier
-               | LPAREN target_list RPAREN
-               | LBRACKET target_list RBRACKET
-               | subscription
-        """
         if len(p) == 2:
             p[0] = Name(id=p[1], ctx=Store())
         else:
             p[0] = p[2]
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_atom(self, p):
-        """
-        atom : identifier
-             | literal
-             | enclosure
-        """
         if p.slice[1].type == "identifier":
             p[0] = Name(id=p[1], ctx=Load())
         else:
             p[0] = p[1]
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_literal(self, p):
-        """
-        literal : integer
-                | TRUE
-                | FALSE
-        """
         p[0] = Constant(value=p[1])
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_enclosure(self, p):
-        """
-        enclosure : parenth_form
-                   | list_display
-                   | dict_display
-        """
         p[0] = p[1]
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_parenth_form(self, p):
-        """
-        parenth_form : LPAREN expression RPAREN
-        """
         p[0] = p[2]
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_list_display(self, p):
-        """
-        list_display : LBRACKET expression_list RBRACKET
-        """
         p[0] = List(elts=p[2])
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_dict_display(self, p):
-        """
-        dict_display : LBRACE key_datum_list RBRACE
-        """
         p[0] = p[2]
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_key_datum_list(self, p):
-        """
-        key_datum_list : key_datum_list COMMA key_datum
-                       | key_datum
-                       | empty
-        """
         if len(p) == 4:
             p[1].keys.append(p[3][0])
             p[1].values.append(p[3][1])
@@ -454,249 +372,122 @@ class Parser(object):
                 p[0] = Dict(keys=[], values=[])
             else:
                 p[0] = Dict(keys=[p[1][0]], values=[p[1][1]])
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_key_datum(self, p):
-        """
-        key_datum : expression COLON expression
-        """
         p[0] = (p[1], p[3])
-        verboseprint(get_fileinfo(), p[0])
 
     def p_subscription(self, p):
-        """
-        subscription : primary LBRACKET expression_list RBRACKET
-        """
         p[0] = Subscript(value=p[1], slice=p[3])
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_primary(self, p):
-        """
-        primary : atom
-                | call
-                | subscription
-        """
         p[0] = p[1]
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_call(self, p):
-        """
-        call : primary LPAREN argument_list RPAREN
-        """
         p[0] = Call(func=p[1], args=p[3])
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_argument_list(self, p):
-        """
-        argument_list : positional_arguments
-        """
         p[0] = p[1]
-        verboseprint(get_fileinfo(), p[0])
 
     def p_positional_arguments(self, p):
-        """
-        positional_arguments : positional_arguments COMMA positional_item
-                             | positional_item
-                             | empty
-        """
         if len(p) == 2:
             p[0] = [p[1]] if p[1] else []
         elif len(p) == 4:
             p[0] = p[1] + [p[3]]
-        verboseprint(get_fileinfo(), p[0])
 
     def p_positional_item(self, p):
-        """
-        positional_item : expression
-        """
         p[0] = p[1]
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_expression_list(self, p):
-        """
-        expression_list : expression_list COMMA expression
-                         | expression
-                         | empty
-        """
         if len(p) == 2:
             p[0] = [p[1]] if p[1] else []
         elif len(p) == 4:
             p[0] = p[1] + [p[3]]
-        verboseprint(get_fileinfo(), p[0])
 
     def p_expression(self, p):
-        """
-        expression : conditional_expression
-                    | lambda_expr
-        """
         p[0] = p[1]
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_conditional_expression(self, p):
-        """
-        conditional_expression : or_test
-                                | or_test IF or_test ELSE conditional_expression
-        """
         if len(p) == 2:
             p[0] = p[1]
         else:
             p[0] = IfExp(test=p[1], body=p[3], orelse=p[5])
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_lambda_expr(self, p):
-        """
-        lambda_expr : LAMBDA parameter_list COLON expression
-        """
         p[0] = Lambda(args=arguments(args=p[2]), body=p[4])
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_parameter_list(self, p):
-        """
-        parameter_list : parameter_list COMMA parameter
-                       | parameter
-                       | empty
-        """
         if len(p) == 4:
             p[0] = p[1] + [p[3]]
         elif len(p) == 2:
             p[0] = [p[1]] if p[1] else []
 
     def p_parameter(self, p):
-        """
-        parameter : identifier
-        """
         p[0] = arg(arg=p[1])
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_or_test(self, p):
-        """
-        or_test : and_test
-                | or_test OR and_test
-        """
         if len(p) == 2:
             p[0] = p[1]
         else:
             p[0] = BoolOp(op=Or(), values=[p[1], p[3]])
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_and_test(self, p):
-        """
-        and_test : not_test
-                 | and_test AND not_test
-        """
         if len(p) == 2:
             p[0] = p[1]
         else:
             p[0] = BoolOp(op=And(), values=[p[1], p[3]])
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_not_test(self, p):
-        """
-        not_test : NOT not_test
-                 | comparison
-        """
         if len(p) == 2:
             p[0] = p[1]
         else:
             p[0] = UnaryOp(op=Not(), operand=p[2])
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_comparison(self, p):
-        """
-        comparison : comparison comp_operator a_expr
-                   | a_expr
-        """
         if len(p) == 2:
             p[0] = p[1]
         else:
             p[0] = Compare(left=p[1], ops=[p[2]], comparators=[p[3]])
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_comp_operator(self, p):
-        """
-        comp_operator : EQ
-                      | NE
-                      | IS
-        """
         p[0] = Eq() if p[1] == "==" else NotEq() if p[1] == "!=" else Is()
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_a_expr(self, p):
-        """
-        a_expr : a_expr PLUS u_expr
-               | u_expr
-        """
         if len(p) == 2:
             p[0] = p[1]
         else:
             p[0] = BinOp(left=p[1], op=Add(), right=p[3])
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_if_stmt(self, p):
-        """
-        if_stmt : IF expression COLON suite
-            | IF expression COLON suite ELSE COLON suite
-        """
         if len(p) == 5:
             p[0] = If(test=p[2], body=p[4])
         else:
             p[0] = If(test=p[2], body=p[4], orelse=p[7])
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_while_stmt(self, p):
-        """
-        while_stmt : WHILE expression COLON suite
-        """
         p[0] = While(test=p[2], body=p[4])
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_funcdef(self, p):
-        """
-        funcdef : DEF funcname LPAREN parameter_list RPAREN COLON suite
-        """
         p[0] = FunctionDef(name=p[2], args=arguments(args=p[4]), body=p[7])
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_funcname(self, p):
-        """
-        funcname : identifier
-        """
         p[0] = p[1]
-        verboseprint(get_fileinfo(), p[0])
 
     def p_return_stmt(self, p):
-        """
-        return_stmt : RETURN expression_list
-        """
         p[0] = Return(value=p[2])
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_suite(self, p):
-        """
-        suite : stmt_list NEWLINE
-              | NEWLINE INDENT statements DEDENT
-        """
         if len(p) == 3:
             p[0] = p[1]
         else:
             p[0] = p[3]
-        verboseprint(get_fileinfo(), p[0])
 
     def p_u_expr(self, p):
-        """
-        u_expr : primary
-               | MINUS u_expr %prec UMINUS
-        """
         if len(p) == 2:
             p[0] = p[1]
         else:
             p[0] = UnaryOp(op=USub(), operand=p[2])
-        verboseprint(get_fileinfo(), ast.dump(p[0]))
 
     def p_empty(self, p):
-        """
-        empty :
-        """
         pass
 
     def p_error(self, p):
@@ -722,7 +513,7 @@ def pparse(subset, codef):
     code = code + '\n'
     lexer = Lexer()
     lexer = IndentWrapper(lexer)
-    parser = Parser()
+    parser = Parser(subset)
     return parser.parse(code, lexer=lexer)
 
 
@@ -768,8 +559,9 @@ def main():
 
         for file in prog_files:
             with open(file, 'r') as f:
-                assert traverse(args.subset, f) \
-                    and pparse(args.subset, f) \
+                verboseprint(get_fileinfo(), '\033[1;32m Validating {}\033[0m'.format(file))
+                assert pparse(args.subset, f) \
+                    and traverse(args.subset, f) \
                     and exec_prog(file) == True, \
                     "invalid program: {}".format(file)
 
