@@ -43,9 +43,19 @@ nodes = [
     [If, While, ClassDef]  # < P3
 ]
 
+def get_fileinfo():
+    """Get the file name, function name and 
+    line number of the current frame."""
+    cf = currentframe()
+    filename = getframeinfo(cf).filename
+    lineno = cf.f_back.f_lineno
+    funcname = cf.f_back.f_code.co_name
+    return Path(filename).stem, funcname, lineno
+
+
 def popen_result(popen):
     (out, err) = popen.communicate()
-    verboseprint(out, err)
+    verboseprint(get_fileinfo(), out, err)
     retcode = popen.wait()
     if retcode != 0:
         if not (out is None):
@@ -113,16 +123,6 @@ def traverse(subset, f):
 ##########################
 # Ply parser
 ##########################
-
-
-def get_fileinfo():
-    """Get the file name, function name and line number of the current frame."""
-    cf = currentframe()
-    filename = getframeinfo(cf).filename
-    lineno = cf.f_back.f_lineno
-    funcname = cf.f_back.f_code.co_name
-    return Path(filename).stem, funcname, lineno
-
 
 class Lexer:
     reserved = {
