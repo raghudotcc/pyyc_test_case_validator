@@ -45,6 +45,7 @@ nodes = [
 
 def popen_result(popen):
     (out, err) = popen.communicate()
+    verboseprint(out, err)
     retcode = popen.wait()
     if retcode != 0:
         if not (out is None):
@@ -496,11 +497,11 @@ class Parser(object):
         err_tok = 'EOF'
         if p:
             err_tok = p
-        verboseprint(get_fileinfo(), '\033[1;31m Syntax error at "{}".\033[0m \n \033[1;31mParser State:{} {} . {}\033[0m'
-                     .format(err_tok,
-                             self.parser.state,
-                             stack_state_str,
-                             p))
+        print(get_fileinfo(), '\033[1;31m Syntax error at "{}".\033[0m \n \033[1;31mParser State:{} {} . {}\033[0m'
+                .format(err_tok,
+                        self.parser.state,
+                        stack_state_str,
+                        p))
         exit(1)
 
 
@@ -553,7 +554,8 @@ def main():
         if os.path.isdir(args.input):
             # run validation on all files in the directory
             for file in os.listdir(args.input):
-                prog_files.append(os.path.join(args.input, file))
+                if file.endswith('.py'):
+                    prog_files.append(os.path.join(args.input, file))
         else:
             prog_files.append(args.input)
 
